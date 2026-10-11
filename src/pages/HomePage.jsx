@@ -15,7 +15,9 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const [textRevealed, setTextRevealed] = useState(false);
   const textRevealedRef = useRef(false);
   textRevealedRef.current = textRevealed;
-  const lockScrollRef = useRef(false);
+  const touchRevealingGestureRef = useRef(false);
+  const wheelRevealingGestureRef = useRef(false);
+  const wheelIdleTimerRef = useRef(null);
   const touchStartYRef = useRef(0);
   const heroRef = useRef(null);
   const mobilePlatillosRef = useRef(null);
@@ -30,20 +32,31 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Detener el scroll y revelar texto en el header en el primer scroll/deslizamiento
+    // Detener el scroll en el primer intento para mostrar el texto en el header.
+    // Se requiere un SEGUNDO scroll/deslizamiento para bajar al resto del sitio.
     const handleWheel = (e) => {
-      if (window.scrollY <= 15) {
+      if (window.scrollY <= 20) {
+        // Gesto 1: Revela el texto y bloquea todo este primer giro
         if (!textRevealedRef.current && e.deltaY > 0) {
           e.preventDefault();
+          textRevealedRef.current = true;
           setTextRevealed(true);
-          lockScrollRef.current = true;
-          setTimeout(() => {
-            lockScrollRef.current = false;
-          }, 900);
+          wheelRevealingGestureRef.current = true;
+          
+          clearTimeout(wheelIdleTimerRef.current);
+          wheelIdleTimerRef.current = setTimeout(() => {
+            wheelRevealingGestureRef.current = false;
+          }, 600);
           return;
         }
-        if (lockScrollRef.current && e.deltaY > 0) {
+
+        // Mientras siga la inercia del primer giro, se detiene el scroll
+        if (wheelRevealingGestureRef.current && e.deltaY > 0) {
           e.preventDefault();
+          clearTimeout(wheelIdleTimerRef.current);
+          wheelIdleTimerRef.current = setTimeout(() => {
+            wheelRevealingGestureRef.current = false;
+          }, 600);
           return;
         }
       }
@@ -60,26 +73,34 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       const touchY = e.touches[0].clientY;
       const deltaY = touchStartYRef.current - touchY; // > 0 indica deslizar hacia abajo
 
-      if (window.scrollY <= 15) {
-        if (!textRevealedRef.current && deltaY > 12) {
+      if (window.scrollY <= 20) {
+        // Gesto 1: El primer swipe solo revela el texto y DETIENE el scroll
+        if (!textRevealedRef.current && deltaY > 10) {
           if (e.cancelable) e.preventDefault();
+          textRevealedRef.current = true;
           setTextRevealed(true);
-          lockScrollRef.current = true;
-          setTimeout(() => {
-            lockScrollRef.current = false;
-          }, 900);
+          touchRevealingGestureRef.current = true;
           return;
         }
-        if (lockScrollRef.current && deltaY > 0) {
+
+        // Si este touchmove es continuación del PRIMER swipe que reveló el texto,
+        // se bloquea completamente para que NO baje en este intento.
+        if (touchRevealingGestureRef.current) {
           if (e.cancelable) e.preventDefault();
           return;
         }
       }
     };
 
+    const handleTouchEnd = () => {
+      // Al levantar el dedo termina el primer gesto. El siguiente swipe sí bajará a lo demás.
+      touchRevealingGestureRef.current = false;
+    };
+
     window.addEventListener('wheel', handleWheel, { passive: false });
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     // Auto-play continuo del video 2 (platillos)
     const attemptPlay = () => {
@@ -103,7 +124,9 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       window.removeEventListener('wheel', handleWheel);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
       window.removeEventListener('touchstart', handleFirstTouch);
+      clearTimeout(wheelIdleTimerRef.current);
     };
   }, []);
 
@@ -112,12 +135,9 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   };
 
   const handleScrollDown = () => {
-    if (!textRevealed) {
+    if (!textRevealedRef.current) {
+      textRevealedRef.current = true;
       setTextRevealed(true);
-      lockScrollRef.current = true;
-      setTimeout(() => {
-        lockScrollRef.current = false;
-      }, 900);
     } else {
       const el = document.getElementById('features-section');
       if (el) {
