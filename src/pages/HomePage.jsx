@@ -14,8 +14,8 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [heroProgress, setHeroProgress] = useState(0);
   const heroRef = useRef(null);
-  const mobileVideoRef = useRef(null);
-  const desktopVideoRef = useRef(null);
+  const mobilePlatillosRef = useRef(null);
+  const desktopPlatillosRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,13 +35,13 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
 
-    // Auto-play hero videos for mobile and desktop
+    // Auto-play continuo del video 2 (platillos)
     const attemptPlay = () => {
-      if (mobileVideoRef.current) {
-        mobileVideoRef.current.play().catch(() => {});
+      if (mobilePlatillosRef.current) {
+        mobilePlatillosRef.current.play().catch(() => {});
       }
-      if (desktopVideoRef.current) {
-        desktopVideoRef.current.play().catch(() => {});
+      if (desktopPlatillosRef.current) {
+        desktopPlatillosRef.current.play().catch(() => {});
       }
     };
     attemptPlay();
@@ -64,10 +64,12 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
 
   const handleScrollDown = () => {
     if (heroRef.current) {
-      const target = heroRef.current.offsetTop + (heroRef.current.offsetHeight - window.innerHeight) * 0.85;
+      // Desplazamiento suave directo al punto donde el texto aparece centrado sin bajar la pantalla
+      const total = heroRef.current.offsetHeight - window.innerHeight;
+      const target = heroRef.current.offsetTop + total * 0.35;
       window.scrollTo({ top: target, behavior: 'smooth' });
     } else {
-      window.scrollBy({ top: window.innerHeight * 0.85, behavior: 'smooth' });
+      window.scrollBy({ top: window.innerHeight * 0.4, behavior: 'smooth' });
     }
   };
 
@@ -140,22 +142,52 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     }
   ];
 
+  // Cálculos cinemáticos de progreso para el hero stage
+  // 1. Indicador "DESLIZA PARA EXPLORAR": visible de inicio y se desvanece de inmediato al scrollear
+  const indicatorOpacity = Math.max(1 - heroProgress * 7, 0);
+
+  // 2. Capa de oscurecimiento suave sobre los platillos: garantiza contraste perfecto para el texto
+  const overlayOpacity = heroProgress < 0.04
+    ? 0.15
+    : Math.min(0.15 + (heroProgress - 0.04) * 2.5, 0.65);
+
+  // 3. Aparición y retención fija del texto ("que no baje la pantalla cuando aparezca este texto"):
+  // - 0.00 a 0.05: Video de platillos limpio
+  // - 0.05 a 0.18: El texto aparece suavemente
+  // - 0.18 a 0.88: RETENCIÓN TOTAL (100% visible, centrado, video de platillos en loop, LA PANTALLA NO BAJA)
+  // - 0.88 a 1.00: Transición hacia la siguiente sección
+  let textOpacity = 0;
+  if (heroProgress >= 0.05 && heroProgress < 0.18) {
+    textOpacity = (heroProgress - 0.05) / 0.13;
+  } else if (heroProgress >= 0.18 && heroProgress <= 0.88) {
+    textOpacity = 1;
+  } else if (heroProgress > 0.88) {
+    textOpacity = Math.max(1 - (heroProgress - 0.88) / 0.12, 0);
+  }
+
+  // Elevación muy suave del texto al entrar
+  const textTranslateY = heroProgress < 0.18
+    ? Math.max((0.18 - heroProgress) / 0.18 * 18, 0)
+    : 0;
+
   return (
-    <div className="pt-0 pb-28 min-h-screen text-[#f5f5f7] bg-[#000000] relative overflow-hidden font-sf-pro-text text-left">
+    <div className="pt-0 pb-28 min-h-screen text-[#f5f7f5] bg-[#000000] relative overflow-x-clip font-sf-pro-text text-left">
       
       {/* ============================================================
-          01 HERO STAGE: VIDEO EN EL FONDO (EL TEXTO APARECE SOBRE EL VIDEO AL HACER SCROLL)
+          01 HERO STAGE: SOLO VIDEO 2 (PLATILLOS EN LOOP CONTINUO)
+          EL TEXTO APARECE AL HACER SCROLL Y LA PANTALLA NO BAJA
          ============================================================ */}
-      <section ref={heroRef} className="relative w-full h-[115vh] md:h-[130vh] z-10 bg-black">
+      <section ref={heroRef} className="relative w-full h-[260vh] md:h-[250vh] z-10 bg-black">
         
-        {/* STICKY STAGE A PANTALLA COMPLETA */}
-        <div className="sticky top-0 h-screen h-[100dvh] w-full flex flex-col justify-center items-center overflow-hidden">
+        {/* STICKY STAGE A PANTALLA COMPLETA - MANTIENE LA PANTALLA FIJA SIN BAJAR */}
+        <div className="sticky top-0 h-screen h-[100dvh] w-full flex flex-col justify-center items-center px-6 sm:px-12 text-center overflow-hidden">
 
-          {/* BACKGROUND VIDEO: PUA WR SOLO EN CELULAR / PUA BRAND OF EN ESCRITORIO */}
+          {/* BACKGROUND VIDEO: EXCLUSIVAMENTE VIDEO 2 (PLATILLOS EN LOOP CONTINUO, SIN FUEGO NI LOGO) */}
           <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-            {/* MOBILE VIDEO: PUA WR (SOLO EN CELULAR) */}
+            
+            {/* MOBILE VIDEO (SOLO PLATILLOS) */}
             <video
-              ref={mobileVideoRef}
+              ref={mobilePlatillosRef}
               autoPlay
               loop
               muted
@@ -176,15 +208,13 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
                 objectPosition: 'center center',
               }}
             >
-              <source src="/assets/pua-wr.mp4" type="video/mp4" />
-              <source src="/pua-wr.mp4" type="video/mp4" />
-              <source src="/assets/PUA WR.MP4" type="video/mp4" />
-              <source src="/PUA WR.MP4" type="video/mp4" />
+              <source src="/assets/pua-platillos-mobile.mp4" type="video/mp4" />
+              <source src="/pua-platillos-mobile.mp4" type="video/mp4" />
             </video>
 
-            {/* DESKTOP VIDEO: PUA BRAND OF (SOLO EN ESCRITORIO) */}
+            {/* DESKTOP VIDEO (SOLO PLATILLOS) */}
             <video
-              ref={desktopVideoRef}
+              ref={desktopPlatillosRef}
               autoPlay
               loop
               muted
@@ -205,27 +235,26 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
                 objectPosition: 'center center',
               }}
             >
-              <source src="/assets/pua-brand-of.mp4" type="video/mp4" />
-              <source src="/pua-brand-of.mp4" type="video/mp4" />
-              <source src="/assets/PUA BRAND OF.mp4" type="video/mp4" />
-              <source src="/PUA BRAND OF.mp4" type="video/mp4" />
+              <source src="/assets/pua-platillos-desktop.mp4" type="video/mp4" />
+              <source src="/pua-platillos-desktop.mp4" type="video/mp4" />
             </video>
+
           </div>
 
-          {/* OSCURECIMIENTO SUAVE QUE SE INTENSIFICA AL HACER SCROLL PARA QUE EL TEXTO RESALTE */}
+          {/* CAPA DE CONTRASTE SUAVE PARA LEER EL TEXTO CLARAMENTE SOBRE LOS PLATILLOS */}
           <div 
-            className="absolute inset-0 bg-black/60 pointer-events-none transition-opacity duration-200"
+            className="absolute inset-0 bg-black/55 pointer-events-none transition-opacity duration-300"
             style={{
-              opacity: Math.min(Math.max((heroProgress - 0.05) * 1.8, 0), 0.72)
+              opacity: overlayOpacity
             }}
           />
 
-          {/* COMPONENTE DE TEXTO: APARECE DIRECTAMENTE SOBRE EL FONDO DEL VIDEO AL HACER SCROLL */}
+          {/* COMPONENTE DE TEXTO: APARECE AL HACER SCROLL, LA PANTALLA NO BAJA */}
           <div 
-            className="relative z-20 max-w-3xl mx-auto px-6 sm:px-12 text-center space-y-6 transition-all duration-300 pointer-events-none"
+            className="relative z-20 max-w-3xl mx-auto px-4 sm:px-8 text-center space-y-4 sm:space-y-6 pointer-events-none transition-all duration-200"
             style={{
-              opacity: Math.min(Math.max((heroProgress - 0.08) / 0.45, 0), 1),
-              transform: `translateY(${Math.max((0.5 - heroProgress) * 25, 0)}px)`,
+              opacity: textOpacity,
+              transform: `translateY(${textTranslateY}px)`,
             }}
           >
             <span className="text-xs font-mono text-[#c49a4a] tracking-[0.25em] uppercase block font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
@@ -237,7 +266,7 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
               <span className="text-[#ffffff]">FUEGO & LA CAVA.</span>
             </h1>
             
-            <p className="text-base sm:text-lg text-[#f5f5f7] max-w-2xl mx-auto leading-relaxed font-normal text-center drop-shadow-[0_2px_16px_rgba(0,0,0,0.98)]">
+            <p className="text-sm sm:text-base md:text-lg text-[#f5f5f7] max-w-2xl mx-auto leading-relaxed font-normal text-center drop-shadow-[0_2px_16px_rgba(0,0,0,0.98)]">
               Cortes Angus Prime madurados en seco durante 45 días, sellados al fuego directo de encino a 600°C. Acompañados por una cava de más de 500 etiquetas internacionales curadas por sommelier.
             </p>
           </div>
@@ -247,8 +276,8 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
             onClick={handleScrollDown}
             className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center justify-center gap-2 cursor-pointer select-none group transition-opacity duration-300"
             style={{
-              opacity: Math.max(1 - heroProgress * 4, 0),
-              pointerEvents: heroProgress < 0.18 ? 'auto' : 'none'
+              opacity: indicatorOpacity,
+              pointerEvents: indicatorOpacity > 0.1 ? 'auto' : 'none'
             }}
           >
             <span className="text-[11px] font-sans uppercase tracking-[0.28em] text-[#d4d3c9] font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] group-hover:text-white transition-colors">
