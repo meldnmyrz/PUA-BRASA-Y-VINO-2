@@ -12,7 +12,11 @@ import Features11 from '../components/Features11';
 
 export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [heroProgress, setHeroProgress] = useState(0);
+  const [textRevealed, setTextRevealed] = useState(false);
+  const textRevealedRef = useRef(false);
+  textRevealedRef.current = textRevealed;
+  const lockScrollRef = useRef(false);
+  const touchStartYRef = useRef(0);
   const heroRef = useRef(null);
   const mobilePlatillosRef = useRef(null);
   const desktopPlatillosRef = useRef(null);
@@ -23,17 +27,59 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 400);
-      if (heroRef.current) {
-        const rect = heroRef.current.getBoundingClientRect();
-        const total = heroRef.current.offsetHeight - window.innerHeight;
-        if (total > 0) {
-          const progress = Math.min(Math.max(-rect.top / total, 0), 1);
-          setHeroProgress(progress);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Detener el scroll y revelar texto en el header en el primer scroll/deslizamiento
+    const handleWheel = (e) => {
+      if (window.scrollY <= 15) {
+        if (!textRevealedRef.current && e.deltaY > 0) {
+          e.preventDefault();
+          setTextRevealed(true);
+          lockScrollRef.current = true;
+          setTimeout(() => {
+            lockScrollRef.current = false;
+          }, 900);
+          return;
+        }
+        if (lockScrollRef.current && e.deltaY > 0) {
+          e.preventDefault();
+          return;
         }
       }
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+
+    const handleTouchStart = (e) => {
+      if (e.touches && e.touches[0]) {
+        touchStartYRef.current = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (!e.touches || !e.touches[0]) return;
+      const touchY = e.touches[0].clientY;
+      const deltaY = touchStartYRef.current - touchY; // > 0 indica deslizar hacia abajo
+
+      if (window.scrollY <= 15) {
+        if (!textRevealedRef.current && deltaY > 12) {
+          if (e.cancelable) e.preventDefault();
+          setTextRevealed(true);
+          lockScrollRef.current = true;
+          setTimeout(() => {
+            lockScrollRef.current = false;
+          }, 900);
+          return;
+        }
+        if (lockScrollRef.current && deltaY > 0) {
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
 
     // Auto-play continuo del video 2 (platillos)
     const attemptPlay = () => {
@@ -54,6 +100,9 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchstart', handleFirstTouch);
     };
   }, []);
@@ -63,13 +112,17 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   };
 
   const handleScrollDown = () => {
-    if (heroRef.current) {
-      // Desplazamiento suave directo al punto donde el texto aparece centrado sin bajar la pantalla
-      const total = heroRef.current.offsetHeight - window.innerHeight;
-      const target = heroRef.current.offsetTop + total * 0.35;
-      window.scrollTo({ top: target, behavior: 'smooth' });
+    if (!textRevealed) {
+      setTextRevealed(true);
+      lockScrollRef.current = true;
+      setTimeout(() => {
+        lockScrollRef.current = false;
+      }, 900);
     } else {
-      window.scrollBy({ top: window.innerHeight * 0.4, behavior: 'smooth' });
+      const el = document.getElementById('features-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
@@ -142,152 +195,117 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     }
   ];
 
-  // Cálculos cinemáticos de progreso para el hero stage
-  // 1. Indicador "DESLIZA PARA EXPLORAR": visible de inicio y se desvanece de inmediato al scrollear
-  const indicatorOpacity = Math.max(1 - heroProgress * 7, 0);
-
-  // 2. Capa de oscurecimiento suave sobre los platillos: garantiza contraste perfecto para el texto
-  const overlayOpacity = heroProgress < 0.04
-    ? 0.15
-    : Math.min(0.15 + (heroProgress - 0.04) * 2.5, 0.65);
-
-  // 3. Aparición y retención fija del texto ("que no baje la pantalla cuando aparezca este texto"):
-  // - 0.00 a 0.05: Video de platillos limpio
-  // - 0.05 a 0.18: El texto aparece suavemente
-  // - 0.18 a 0.88: RETENCIÓN TOTAL (100% visible, centrado, video de platillos en loop, LA PANTALLA NO BAJA)
-  // - 0.88 a 1.00: Transición hacia la siguiente sección
-  let textOpacity = 0;
-  if (heroProgress >= 0.05 && heroProgress < 0.18) {
-    textOpacity = (heroProgress - 0.05) / 0.13;
-  } else if (heroProgress >= 0.18 && heroProgress <= 0.88) {
-    textOpacity = 1;
-  } else if (heroProgress > 0.88) {
-    textOpacity = Math.max(1 - (heroProgress - 0.88) / 0.12, 0);
-  }
-
-  // Elevación muy suave del texto al entrar
-  const textTranslateY = heroProgress < 0.18
-    ? Math.max((0.18 - heroProgress) / 0.18 * 18, 0)
-    : 0;
-
   return (
     <div className="pt-0 pb-28 min-h-screen text-[#f5f7f5] bg-[#000000] relative overflow-x-clip font-sf-pro-text text-left">
       
       {/* ============================================================
           01 HERO STAGE: SOLO VIDEO 2 (PLATILLOS EN LOOP CONTINUO)
-          EL TEXTO APARECE AL HACER SCROLL Y LA PANTALLA NO BAJA
+          EL TEXTO QUEDA EN EL HEADER, SIN ESPACIO NEGRO Y DETIENE SCROLL
          ============================================================ */}
-      <section ref={heroRef} className="relative w-full h-[260vh] md:h-[250vh] z-10 bg-black">
-        
-        {/* STICKY STAGE A PANTALLA COMPLETA - MANTIENE LA PANTALLA FIJA SIN BAJAR */}
-        <div className="sticky top-0 h-screen h-[100dvh] w-full flex flex-col justify-center items-center px-6 sm:px-12 text-center overflow-hidden">
-
-          {/* BACKGROUND VIDEO: EXCLUSIVAMENTE VIDEO 2 (PLATILLOS EN LOOP CONTINUO, SIN FUEGO NI LOGO) */}
-          <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
-            
-            {/* MOBILE VIDEO (SOLO PLATILLOS) */}
-            <video
-              ref={mobilePlatillosRef}
-              autoPlay
-              loop
-              muted
-              playsInline
-              webkit-playsinline="true"
-              preload="auto"
-              className="md:hidden w-full h-full object-cover"
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '100%',
-                height: '100%',
-                minWidth: '100%',
-                minHeight: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center center',
-              }}
-            >
-              <source src="/assets/pua-platillos-mobile.mp4" type="video/mp4" />
-              <source src="/pua-platillos-mobile.mp4" type="video/mp4" />
-            </video>
-
-            {/* DESKTOP VIDEO (SOLO PLATILLOS) */}
-            <video
-              ref={desktopPlatillosRef}
-              autoPlay
-              loop
-              muted
-              playsInline
-              webkit-playsinline="true"
-              preload="auto"
-              className="hidden md:block w-full h-full object-cover"
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '100%',
-                height: '100%',
-                minWidth: '100%',
-                minHeight: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center center',
-              }}
-            >
-              <source src="/assets/pua-platillos-desktop.mp4" type="video/mp4" />
-              <source src="/pua-platillos-desktop.mp4" type="video/mp4" />
-            </video>
-
-          </div>
-
-          {/* CAPA DE CONTRASTE SUAVE PARA LEER EL TEXTO CLARAMENTE SOBRE LOS PLATILLOS */}
-          <div 
-            className="absolute inset-0 bg-black/55 pointer-events-none transition-opacity duration-300"
+      <section 
+        ref={heroRef} 
+        className="relative w-full h-screen min-h-[100dvh] z-10 bg-black flex flex-col justify-between items-center overflow-hidden"
+      >
+        {/* BACKGROUND VIDEO: EXCLUSIVAMENTE VIDEO 2 (PLATILLOS EN LOOP CONTINUO, SIN FUEGO NI LOGO) */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+          
+          {/* MOBILE VIDEO (SOLO PLATILLOS) */}
+          <video
+            ref={mobilePlatillosRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            webkit-playsinline="true"
+            preload="auto"
+            className="md:hidden w-full h-full object-cover"
             style={{
-              opacity: overlayOpacity
-            }}
-          />
-
-          {/* COMPONENTE DE TEXTO: APARECE AL HACER SCROLL, LA PANTALLA NO BAJA */}
-          <div 
-            className="relative z-20 max-w-3xl mx-auto px-4 sm:px-8 text-center space-y-4 sm:space-y-6 pointer-events-none transition-all duration-200"
-            style={{
-              opacity: textOpacity,
-              transform: `translateY(${textTranslateY}px)`,
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '100%',
+              height: '100%',
+              minWidth: '100%',
+              minHeight: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center',
             }}
           >
-            <span className="text-xs font-mono text-[#c49a4a] tracking-[0.25em] uppercase block font-semibold drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]">
-              EL ARTE DE LA BRASA
-            </span>
-            
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-sf-pro-display font-semibold tracking-[-0.02em] text-[#ffffff] leading-[1.15] text-center drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)]">
-              EL RITUAL DEL <br className="hidden sm:block" />
-              <span className="text-[#ffffff]">FUEGO & LA CAVA.</span>
-            </h1>
-            
-            <p className="text-sm sm:text-base md:text-lg text-[#f5f5f7] max-w-2xl mx-auto leading-relaxed font-normal text-center drop-shadow-[0_2px_16px_rgba(0,0,0,0.98)]">
-              Cortes Angus Prime madurados en seco durante 45 días, sellados al fuego directo de encino a 600°C. Acompañados por una cava de más de 500 etiquetas internacionales curadas por sommelier.
-            </p>
-          </div>
+            <source src="/assets/pua-platillos-mobile.mp4" type="video/mp4" />
+            <source src="/pua-platillos-mobile.mp4" type="video/mp4" />
+          </video>
 
-          {/* DESLIZA PARA EXPLORAR (VISIBLE AL INICIO, DESAPARECE AL HACER SCROLL) */}
-          <div 
-            onClick={handleScrollDown}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center justify-center gap-2 cursor-pointer select-none group transition-opacity duration-300"
+          {/* DESKTOP VIDEO (SOLO PLATILLOS) */}
+          <video
+            ref={desktopPlatillosRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            webkit-playsinline="true"
+            preload="auto"
+            className="hidden md:block w-full h-full object-cover"
             style={{
-              opacity: indicatorOpacity,
-              pointerEvents: indicatorOpacity > 0.1 ? 'auto' : 'none'
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '100%',
+              height: '100%',
+              minWidth: '100%',
+              minHeight: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center',
             }}
           >
-            <span className="text-[11px] font-sans uppercase tracking-[0.28em] text-[#d4d3c9] font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] group-hover:text-white transition-colors">
-              DESLIZA PARA EXPLORAR
-            </span>
-            <div className="w-8 h-8 rounded-full border border-white/25 bg-black/40 backdrop-blur-md flex items-center justify-center group-hover:border-[#c49a4a] group-hover:scale-110 transition-all shadow-xl animate-bounce">
-              <ChevronDown className="w-4 h-4 text-white group-hover:text-[#c49a4a] transition-colors" />
-            </div>
-          </div>
+            <source src="/assets/pua-platillos-desktop.mp4" type="video/mp4" />
+            <source src="/pua-platillos-desktop.mp4" type="video/mp4" />
+          </video>
+        </div>
 
+        {/* GRADIENTE SUAVE SUPERIOR E INFERIOR PARA MAXIMIZAR LEGIBILIDAD DEL TEXTO */}
+        <div 
+          className={`absolute inset-0 pointer-events-none transition-opacity duration-700 ${
+            textRevealed ? 'opacity-100' : 'opacity-35'
+          }`}
+          style={{
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0.85) 100%)'
+          }}
+        />
+
+        {/* TEXTO EN EL HEADER (HASTA ARRIBA): APARECE AL HACER SCROLL Y DETIENE LA BAJADA */}
+        <div 
+          className={`relative z-20 w-full max-w-4xl mx-auto px-6 sm:px-10 text-center pt-24 sm:pt-28 md:pt-32 transition-all duration-700 ease-out pointer-events-none ${
+            textRevealed 
+              ? 'opacity-100 translate-y-0 scale-100' 
+              : 'opacity-0 -translate-y-5 scale-95'
+          }`}
+        >
+          <span className="text-xs sm:text-sm font-mono text-[#c49a4a] tracking-[0.28em] uppercase block font-semibold drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] mb-2">
+            EL ARTE DE LA BRASA
+          </span>
+          
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-sf-pro-display font-semibold tracking-[-0.02em] text-[#ffffff] leading-[1.18] drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] mb-3">
+            EL RITUAL DEL FUEGO & LA CAVA.
+          </h1>
+          
+          <p className="text-xs sm:text-sm md:text-base text-[#f5f5f7] max-w-2xl mx-auto leading-relaxed font-normal drop-shadow-[0_2px_16px_rgba(0,0,0,0.98)]">
+            Cortes Angus Prime madurados en seco durante 45 días, sellados al fuego directo de encino a 600°C. Acompañados por una cava de más de 500 etiquetas internacionales curadas por sommelier.
+          </p>
+        </div>
+
+        {/* DESLIZA PARA EXPLORAR / EXPLORAR EL RESTORÁN */}
+        <div 
+          onClick={handleScrollDown}
+          className="relative z-20 pb-8 flex flex-col items-center justify-center gap-2 cursor-pointer select-none group transition-all duration-500"
+        >
+          <span className="text-[11px] font-sans uppercase tracking-[0.28em] text-[#d4d3c9] font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] group-hover:text-white transition-colors">
+            {textRevealed ? 'EXPLORAR EL RESTORÁN' : 'DESLIZA PARA EXPLORAR'}
+          </span>
+          <div className="w-8 h-8 rounded-full border border-white/25 bg-black/50 backdrop-blur-md flex items-center justify-center group-hover:border-[#c49a4a] group-hover:scale-110 transition-all shadow-xl animate-bounce">
+            <ChevronDown className="w-4 h-4 text-white group-hover:text-[#c49a4a] transition-colors" />
+          </div>
         </div>
 
       </section>
@@ -295,7 +313,9 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       {/* ============================================================
           02 REACT BITS PRO FEATURES 11: SPLIT HEADLINE WITH 3 INDEXED CARDS
          ============================================================ */}
-      <Features11 />
+      <div id="features-section">
+        <Features11 />
+      </div>
 
       {/* 03 WHITE MERCHANDISING CARD (#ffffff PAPER CANVAS WITH INK #1d1d1f TEXT) */}
       <section className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 my-20 z-10 relative">
