@@ -14,7 +14,8 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [heroProgress, setHeroProgress] = useState(0);
   const heroRef = useRef(null);
-  const videoRef = useRef(null);
+  const mobileVideoRef = useRef(null);
+  const desktopVideoRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,10 +35,13 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
 
-    // Auto-play hero video with 100% opacity
+    // Auto-play hero videos for mobile and desktop
     const attemptPlay = () => {
-      if (videoRef.current) {
-        videoRef.current.play().catch(() => {});
+      if (mobileVideoRef.current) {
+        mobileVideoRef.current.play().catch(() => {});
+      }
+      if (desktopVideoRef.current) {
+        desktopVideoRef.current.play().catch(() => {});
       }
     };
     attemptPlay();
@@ -147,17 +151,47 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
         {/* STICKY STAGE A PANTALLA COMPLETA */}
         <div className="sticky top-0 h-screen h-[100dvh] w-full flex flex-col justify-center items-center overflow-hidden">
 
-          {/* BACKGROUND VIDEO PUA BRAND OF CENTRADO 100% PANTALLA COMPLETA */}
+          {/* BACKGROUND VIDEO: PUA WR SOLO EN CELULAR / PUA BRAND OF EN ESCRITORIO */}
           <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+            {/* MOBILE VIDEO: PUA WR (SOLO EN CELULAR) */}
             <video
-              ref={videoRef}
+              ref={mobileVideoRef}
               autoPlay
               loop
               muted
               playsInline
               webkit-playsinline="true"
               preload="auto"
-              className="w-full h-full object-cover"
+              className="md:hidden w-full h-full object-cover"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '100%',
+                height: '100%',
+                minWidth: '100%',
+                minHeight: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center center',
+              }}
+            >
+              <source src="/assets/pua-wr.mp4" type="video/mp4" />
+              <source src="/pua-wr.mp4" type="video/mp4" />
+              <source src="/assets/PUA WR.MP4" type="video/mp4" />
+              <source src="/PUA WR.MP4" type="video/mp4" />
+            </video>
+
+            {/* DESKTOP VIDEO: PUA BRAND OF (SOLO EN ESCRITORIO) */}
+            <video
+              ref={desktopVideoRef}
+              autoPlay
+              loop
+              muted
+              playsInline
+              webkit-playsinline="true"
+              preload="auto"
+              className="hidden md:block w-full h-full object-cover"
               style={{
                 position: 'absolute',
                 top: '50%',
