@@ -21,14 +21,38 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const touchStartYRef = useRef(0);
   const heroRef = useRef(null);
   const mobilePlatillosRef = useRef(null);
-  const desktopPlatillosRef = useRef(null);
+  const desktopIntroRef = useRef(null);
+  const desktopBgRef = useRef(null);
+  const [isScrolledDown, setIsScrolledDown] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     document.title = "PÚA Brasa y Vino | Inicio — Sabores de Brasa & Cava VIP";
     
     const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 400);
+      const scrollY = window.scrollY;
+      setShowBackToTop(scrollY > 400);
+
+      // Al bajar (scroll > 30px) se detiene el video intro website en versión web
+      const hasScrolled = scrollY > 30;
+      setIsScrolledDown(hasScrolled);
+
+      if (desktopIntroRef.current) {
+        if (hasScrolled) {
+          if (!desktopIntroRef.current.paused) {
+            desktopIntroRef.current.pause();
+          }
+        } else {
+          if (desktopIntroRef.current.paused) {
+            desktopIntroRef.current.play().catch(() => {});
+          }
+        }
+      }
+
+      // Asegurar que el video website 2 siga en loop continuo de fondo
+      if (desktopBgRef.current && desktopBgRef.current.paused) {
+        desktopBgRef.current.play().catch(() => {});
+      }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
@@ -102,13 +126,16 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd, { passive: true });
 
-    // Auto-play continuo del video 2 (platillos)
+    // Auto-play de videos (mobile y desktop)
     const attemptPlay = () => {
       if (mobilePlatillosRef.current) {
         mobilePlatillosRef.current.play().catch(() => {});
       }
-      if (desktopPlatillosRef.current) {
-        desktopPlatillosRef.current.play().catch(() => {});
+      if (desktopIntroRef.current) {
+        desktopIntroRef.current.play().catch(() => {});
+      }
+      if (desktopBgRef.current) {
+        desktopBgRef.current.play().catch(() => {});
       }
     };
     attemptPlay();
@@ -216,20 +243,59 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   ];
 
   return (
-    <div className="pt-0 pb-28 min-h-screen text-[#f5f7f5] bg-[#000000] relative overflow-x-clip font-sf-pro-text text-left">
+    <div className="pt-0 pb-28 min-h-screen text-[#f5f7f5] bg-[#000000] md:bg-transparent relative overflow-x-clip font-sf-pro-text text-left">
       
       {/* ============================================================
-          01 HERO STAGE: SOLO VIDEO 2 (PLATILLOS EN LOOP CONTINUO)
-          EL TEXTO QUEDA EN EL HEADER, SIN ESPACIO NEGRO Y DETIENE SCROLL
+          FONDO DE PÁGINA (SOLO VERSION WEB): VIDEO WEBSITE 2 EN LOOP CONTINUO
+         ============================================================ */}
+      <div className="hidden md:block fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+        <video
+          ref={desktopBgRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          webkit-playsinline="true"
+          preload="auto"
+          className="w-full h-full object-cover"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '100%',
+            height: '100%',
+            minWidth: '100%',
+            minHeight: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center center',
+          }}
+        >
+          <source src="/website/website-2.mp4" type="video/mp4" />
+          <source src="/website/website 2.MP4" type="video/mp4" />
+        </video>
+        {/* FILTRO SUTIL DE OSCURECIMIENTO / VIGNETTE PARA EL FONDO DEL SITIO */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%)'
+          }}
+        />
+      </div>
+
+      {/* ============================================================
+          01 HERO STAGE: 
+          EN EL PRIMERO SE REPRODUCE INTRO WEBSITE Y SE DETIENE AL BAJAR.
+          DE FONDO ESTÁ EL VIDEO WEBSITE 2 EN LOOP.
          ============================================================ */}
       <section 
         ref={heroRef} 
-        className="relative w-full h-screen min-h-[100dvh] z-10 bg-black flex flex-col justify-between items-center overflow-hidden"
+        className="relative w-full h-screen min-h-[100dvh] z-10 bg-black md:bg-transparent flex flex-col justify-between items-center overflow-hidden"
       >
-        {/* BACKGROUND VIDEO: EXCLUSIVAMENTE VIDEO 2 (PLATILLOS EN LOOP CONTINUO, SIN FUEGO NI LOGO) */}
+        {/* BACKGROUND VIDEOS */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
           
-          {/* MOBILE VIDEO (SOLO PLATILLOS) */}
+          {/* MOBILE VIDEO (SOLO PLATILLOS EN CELULAR) */}
           <video
             ref={mobilePlatillosRef}
             autoPlay
@@ -256,16 +322,18 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
             <source src="/pua-platillos-mobile.mp4" type="video/mp4" />
           </video>
 
-          {/* DESKTOP VIDEO (SOLO PLATILLOS) */}
+          {/* DESKTOP VIDEO (VERSION WEB): INTRO WEBSITE (SE DETIENE AL BAJAR) */}
           <video
-            ref={desktopPlatillosRef}
+            ref={desktopIntroRef}
             autoPlay
             loop
             muted
             playsInline
             webkit-playsinline="true"
             preload="auto"
-            className="hidden md:block w-full h-full object-cover"
+            className={`hidden md:block w-full h-full object-cover transition-opacity duration-700 ${
+              isScrolledDown ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}
             style={{
               position: 'absolute',
               top: '50%',
@@ -277,10 +345,11 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
               minHeight: '100%',
               objectFit: 'cover',
               objectPosition: 'center center',
+              zIndex: 2,
             }}
           >
-            <source src="/assets/pua-platillos-desktop.mp4" type="video/mp4" />
-            <source src="/pua-platillos-desktop.mp4" type="video/mp4" />
+            <source src="/website/intro-website.mp4" type="video/mp4" />
+            <source src="/website/Intro website.MP4" type="video/mp4" />
           </video>
         </div>
 
