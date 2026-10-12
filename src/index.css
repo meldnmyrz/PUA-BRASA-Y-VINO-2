@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Suppress iOS Safari native media playback buttons */
+video::-webkit-media-controls,
+video::-webkit-media-controls-start-playback-button,
+video::-webkit-media-controls-play-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* ============================================================
    APPLE WATCH SERIES 12 CINEMATIC DARK DESIGN SYSTEM
    Theme: Dark

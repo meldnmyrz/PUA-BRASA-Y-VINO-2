@@ -12,13 +12,6 @@ import Features11 from '../components/Features11';
 
 export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [textRevealed, setTextRevealed] = useState(false);
-  const textRevealedRef = useRef(false);
-  textRevealedRef.current = textRevealed;
-  const touchRevealingGestureRef = useRef(false);
-  const wheelRevealingGestureRef = useRef(false);
-  const wheelIdleTimerRef = useRef(null);
-  const touchStartYRef = useRef(0);
   const heroRef = useRef(null);
   const mobileIntroRef = useRef(null);
   const mobileBgRef = useRef(null);
@@ -29,10 +22,24 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const navigate = useNavigate();
 
+  const setupVideoNode = (videoEl) => {
+    if (!videoEl) return;
+    videoEl.muted = true;
+    videoEl.defaultMuted = true;
+    videoEl.playsInline = true;
+    videoEl.setAttribute('playsinline', '');
+    videoEl.setAttribute('webkit-playsinline', '');
+    videoEl.setAttribute('muted', '');
+  };
+
   const handleMobileIntroEnded = () => {
     if (mobileIntroRef.current) {
       mobileIntroRef.current.pause();
-      setMobileIntroFinished(true);
+    }
+    setMobileIntroFinished(true);
+    if (mobileBgRef.current) {
+      setupVideoNode(mobileBgRef.current);
+      mobileBgRef.current.play().catch(() => {});
     }
   };
 
@@ -57,13 +64,18 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
 
   useEffect(() => {
     document.title = "PÚA Brasa y Vino | Inicio — Sabores de Brasa & Cava VIP";
-    
+
+    // Inicializar propiedades muted/playsinline para compatibilidad estricta con iOS Safari
+    setupVideoNode(mobileIntroRef.current);
+    setupVideoNode(desktopIntroRef.current);
+    setupVideoNode(desktopBgRef.current);
+    setupVideoNode(mobileBgRef.current);
+
     const handleScroll = () => {
       const scrollY = window.scrollY;
       setShowBackToTop(scrollY > 400);
 
-      // Al bajar (scroll > 30px) se detienen los videos intro en versión web y móvil
-      const hasScrolled = scrollY > 30;
+      const hasScrolled = scrollY > 40;
       setIsScrolledDown(hasScrolled);
 
       if (hasScrolled) {
@@ -73,142 +85,73 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
         if (desktopIntroRef.current && !desktopIntroRef.current.paused) {
           desktopIntroRef.current.pause();
         }
+        if (mobileBgRef.current && mobileBgRef.current.paused) {
+          setupVideoNode(mobileBgRef.current);
+          mobileBgRef.current.play().catch(() => {});
+        }
+        if (desktopBgRef.current && desktopBgRef.current.paused) {
+          setupVideoNode(desktopBgRef.current);
+          desktopBgRef.current.play().catch(() => {});
+        }
       } else {
         if (mobileIntroRef.current && mobileIntroRef.current.paused && !mobileIntroFinished) {
+          setupVideoNode(mobileIntroRef.current);
           mobileIntroRef.current.play().catch(() => {});
         }
         if (desktopIntroRef.current && desktopIntroRef.current.paused && !introFinishedRef.current) {
+          setupVideoNode(desktopIntroRef.current);
           desktopIntroRef.current.play().catch(() => {});
         }
-      }
-
-      // Asegurar que los videos de fondo sigan en loop continuo
-      if (mobileBgRef.current && mobileBgRef.current.paused) {
-        mobileBgRef.current.play().catch(() => {});
-      }
-      if (desktopBgRef.current && desktopBgRef.current.paused) {
-        desktopBgRef.current.play().catch(() => {});
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Detener el scroll en el primer intento para mostrar el texto en el header.
-    // Se requiere un SEGUNDO scroll/deslizamiento para bajar al resto del sitio.
-    const handleWheel = (e) => {
-      if (window.scrollY <= 20) {
-        // Gesto 1: Revela el texto y bloquea todo este primer giro
-        if (!textRevealedRef.current && e.deltaY > 0) {
-          e.preventDefault();
-          textRevealedRef.current = true;
-          setTextRevealed(true);
-          wheelRevealingGestureRef.current = true;
-          
-          clearTimeout(wheelIdleTimerRef.current);
-          wheelIdleTimerRef.current = setTimeout(() => {
-            wheelRevealingGestureRef.current = false;
-          }, 600);
-          return;
-        }
-
-        // Mientras siga la inercia del primer giro, se detiene el scroll
-        if (wheelRevealingGestureRef.current && e.deltaY > 0) {
-          e.preventDefault();
-          clearTimeout(wheelIdleTimerRef.current);
-          wheelIdleTimerRef.current = setTimeout(() => {
-            wheelRevealingGestureRef.current = false;
-          }, 600);
-          return;
-        }
-      }
-    };
-
-    const handleTouchStart = (e) => {
-      if (e.touches && e.touches[0]) {
-        touchStartYRef.current = e.touches[0].clientY;
-      }
-    };
-
-    const handleTouchMove = (e) => {
-      if (!e.touches || !e.touches[0]) return;
-      const touchY = e.touches[0].clientY;
-      const deltaY = touchStartYRef.current - touchY; // > 0 indica deslizar hacia abajo
-
-      if (window.scrollY <= 20) {
-        // Gesto 1: El primer swipe solo revela el texto y DETIENE el scroll
-        if (!textRevealedRef.current && deltaY > 10) {
-          if (e.cancelable) e.preventDefault();
-          textRevealedRef.current = true;
-          setTextRevealed(true);
-          touchRevealingGestureRef.current = true;
-          return;
-        }
-
-        // Si este touchmove es continuación del PRIMER swipe que reveló el texto,
-        // se bloquea completamente para que NO baje en este intento.
-        if (touchRevealingGestureRef.current) {
-          if (e.cancelable) e.preventDefault();
-          return;
-        }
-      }
-    };
-
-    const handleTouchEnd = () => {
-      // Al levantar el dedo termina el primer gesto. El siguiente swipe sí bajará a lo demás.
-      touchRevealingGestureRef.current = false;
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchmove', handleTouchMove, { passive: false });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-    // Auto-play de videos (mobile y desktop)
+    // Auto-play seguro: En móvil arranca SOLO el intro para evitar el botón nativo de play de iOS Safari
     const attemptPlay = () => {
-      if (mobileIntroRef.current && !mobileIntroFinished) {
-        mobileIntroRef.current.play().catch(() => {});
-      }
-      if (mobileBgRef.current) {
-        mobileBgRef.current.play().catch(() => {});
-      }
-      if (desktopIntroRef.current && !introFinishedRef.current) {
-        desktopIntroRef.current.play().catch(() => {});
-      }
-      if (desktopBgRef.current) {
-        desktopBgRef.current.play().catch(() => {});
+      if (window.innerWidth < 768) {
+        if (mobileIntroRef.current && !mobileIntroFinished) {
+          setupVideoNode(mobileIntroRef.current);
+          mobileIntroRef.current.play().catch(() => {});
+        } else if (mobileBgRef.current) {
+          setupVideoNode(mobileBgRef.current);
+          mobileBgRef.current.play().catch(() => {});
+        }
+      } else {
+        if (desktopIntroRef.current && !introFinishedRef.current) {
+          setupVideoNode(desktopIntroRef.current);
+          desktopIntroRef.current.play().catch(() => {});
+        }
+        if (desktopBgRef.current) {
+          setupVideoNode(desktopBgRef.current);
+          desktopBgRef.current.play().catch(() => {});
+        }
       }
     };
     attemptPlay();
 
-    const handleFirstTouch = () => {
+    const handleUserInteraction = () => {
       attemptPlay();
-      window.removeEventListener('touchstart', handleFirstTouch);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('click', handleUserInteraction);
     };
-    window.addEventListener('touchstart', handleFirstTouch, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true, passive: true });
+    window.addEventListener('click', handleUserInteraction, { once: true, passive: true });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('wheel', handleWheel);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-      window.removeEventListener('touchstart', handleFirstTouch);
-      clearTimeout(wheelIdleTimerRef.current);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      window.removeEventListener('click', handleUserInteraction);
     };
-  }, []);
+  }, [mobileIntroFinished]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleScrollDown = () => {
-    if (!textRevealedRef.current) {
-      textRevealedRef.current = true;
-      setTextRevealed(true);
-    } else {
-      const el = document.getElementById('features-section');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
-      }
+    const el = document.getElementById('statement-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -328,7 +271,6 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       <div className="md:hidden fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
         <video
           ref={mobileBgRef}
-          autoPlay
           loop
           muted
           playsInline
@@ -362,9 +304,9 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       </div>
 
       {/* ============================================================
-          01 HERO STAGE: 
-          DESKTOP: INTRO WEBSITE -> WEBSITE 2 DE FONDO EN LOOP.
-          MOBILE: PRIMERO INTRO -> DESPUÉS DE FONDO PARTE 2 EN LOOP.
+          01 HERO STAGE: INTRO LIMPIO SIN TEXTO
+          DESKTOP: INTRO WEBSITE -> SE DETIENE EN PÚA
+          MOBILE: INTRO -> AUTOPLAY LIMPIO
          ============================================================ */}
       <section 
         ref={heroRef} 
@@ -373,7 +315,7 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
         {/* BACKGROUND VIDEOS */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
           
-          {/* MOBILE VIDEO (CELULAR): PRIMERO INTRO, DESPUÉS SALE DE FONDO PARTE 2 */}
+          {/* MOBILE VIDEO (CELULAR): PRIMERO INTRO */}
           <video
             ref={mobileIntroRef}
             autoPlay
@@ -436,44 +378,16 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
           </video>
         </div>
 
-        {/* GRADIENTE SUAVE SUPERIOR E INFERIOR PARA MAXIMIZAR LEGIBILIDAD DEL TEXTO */}
-        <div 
-          className={`absolute inset-0 pointer-events-none transition-opacity duration-700 ${
-            textRevealed ? 'opacity-100' : 'opacity-35'
-          }`}
-          style={{
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 45%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0.85) 100%)'
-          }}
-        />
+        {/* ESPACIO SUPERIOR LIMPIO */}
+        <div className="w-full pt-16 pointer-events-none" />
 
-        {/* TEXTO EN EL HEADER (HASTA ARRIBA): APARECE AL HACER SCROLL Y DETIENE LA BAJADA */}
-        <div 
-          className={`relative z-20 w-full max-w-4xl mx-auto px-6 sm:px-10 text-center pt-24 sm:pt-28 md:pt-32 transition-all duration-700 ease-out pointer-events-none ${
-            textRevealed 
-              ? 'opacity-100 translate-y-0 scale-100' 
-              : 'opacity-0 -translate-y-5 scale-95'
-          }`}
-        >
-          <span className="text-xs sm:text-sm font-mono text-[#c49a4a] tracking-[0.28em] uppercase block font-semibold drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)] mb-2">
-            EL ARTE DE LA BRASA
-          </span>
-          
-          <h1 className="text-2xl sm:text-4xl md:text-5xl font-sf-pro-display font-semibold tracking-[-0.02em] text-[#ffffff] leading-[1.18] drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)] mb-3">
-            EL RITUAL DEL FUEGO & LA CAVA.
-          </h1>
-          
-          <p className="text-xs sm:text-sm md:text-base text-[#f5f5f7] max-w-2xl mx-auto leading-relaxed font-normal drop-shadow-[0_2px_16px_rgba(0,0,0,0.98)]">
-            Cortes Angus Prime madurados en seco durante 45 días, sellados al fuego directo de encino a 600°C. Acompañados por una cava de más de 500 etiquetas internacionales curadas por sommelier.
-          </p>
-        </div>
-
-        {/* DESLIZA PARA EXPLORAR / EXPLORAR EL RESTORÁN */}
+        {/* DESLIZA PARA EXPLORAR */}
         <div 
           onClick={handleScrollDown}
           className="relative z-20 pb-8 flex flex-col items-center justify-center gap-2 cursor-pointer select-none group transition-all duration-500"
         >
           <span className="text-[11px] font-sans uppercase tracking-[0.28em] text-[#d4d3c9] font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] group-hover:text-white transition-colors">
-            {textRevealed ? 'EXPLORAR EL RESTORÁN' : 'DESLIZA PARA EXPLORAR'}
+            DESLIZA PARA EXPLORAR
           </span>
           <div className="w-8 h-8 rounded-full border border-white/25 bg-black/50 backdrop-blur-md flex items-center justify-center group-hover:border-[#c49a4a] group-hover:scale-110 transition-all shadow-xl animate-bounce">
             <ChevronDown className="w-4 h-4 text-white group-hover:text-[#c49a4a] transition-colors" />
@@ -483,7 +397,46 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       </section>
 
       {/* ============================================================
-          02 REACT BITS PRO FEATURES 11: SPLIT HEADLINE WITH 3 INDEXED CARDS
+          02 SEGUNDO VIDEO (PARTE 2 / WEBSITE 2):
+          AQUÍ SALE EL TEXTO, BAJADO Y CENTRADO SOBRE EL VIDEO DE FONDO
+         ============================================================ */}
+      <section 
+        id="statement-section"
+        className="relative w-full min-h-[85vh] md:min-h-screen z-10 flex flex-col justify-center items-center px-6 sm:px-12 text-center py-20 md:py-28"
+      >
+        <div className="max-w-3xl mx-auto space-y-6 text-center animate-fadeIn">
+          <span className="text-xs sm:text-sm font-mono text-[#c49a4a] tracking-[0.28em] uppercase block font-semibold drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">
+            EL ARTE DE LA BRASA
+          </span>
+          
+          <h2 className="text-3xl sm:text-5xl md:text-6xl font-sf-pro-display font-semibold tracking-[-0.02em] text-[#ffffff] leading-[1.15] drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)]">
+            EL RITUAL DEL FUEGO & LA CAVA.
+          </h2>
+          
+          <p className="text-sm sm:text-base md:text-lg text-[#f5f5f7] max-w-2xl mx-auto leading-relaxed font-normal drop-shadow-[0_2px_16px_rgba(0,0,0,0.98)]">
+            Cortes Angus Prime madurados en seco durante 45 días, sellados al fuego directo de encino a 600°C. Acompañados por una cava de más de 500 etiquetas internacionales curadas por sommelier.
+          </p>
+
+          <div className="pt-4 flex flex-wrap justify-center items-center gap-4">
+            <Link to="/reservas" className="btn-apple-blue font-semibold">
+              <span>Reservar Mesa VIP</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <a 
+              href="https://menu-pua.vercel.app/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="btn-white-outline !text-xs font-semibold"
+            >
+              <span>Ver Menú Digital</span>
+              <ArrowUpRight className="w-3.5 h-3.5 stroke-[2.5]" />
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+          03 REACT BITS PRO FEATURES 11: SPLIT HEADLINE (CENTRADO)
          ============================================================ */}
       <div id="features-section">
         <Features11 />
