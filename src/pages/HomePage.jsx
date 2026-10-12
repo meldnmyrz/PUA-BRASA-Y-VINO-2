@@ -271,8 +271,10 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       <div className="md:hidden fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
         <video
           ref={mobileBgRef}
+          src="/celular/parte-2-mobile.mp4"
           loop
           muted
+          defaultMuted
           playsInline
           webkit-playsinline="true"
           preload="auto"
@@ -289,11 +291,7 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
             objectFit: 'cover',
             objectPosition: 'center center',
           }}
-        >
-          <source src="/celular/parte-2-mobile.mp4" type="video/mp4" />
-          <source src="/celular/Parte 2.MP4" type="video/mp4" />
-          <source src="/celular/parte-2.mp4" type="video/mp4" />
-        </video>
+        />
         {/* FILTRO SUTIL DE OSCURECIMIENTO / VIGNETTE PARA CELULAR */}
         <div 
           className="absolute inset-0 pointer-events-none"
@@ -310,7 +308,17 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
          ============================================================ */}
       <section 
         ref={heroRef} 
-        className="relative w-full h-screen min-h-[100dvh] z-10 bg-transparent flex flex-col justify-between items-center overflow-hidden"
+        onClick={() => {
+          if (mobileIntroRef.current && mobileIntroRef.current.paused && !mobileIntroFinished) {
+            mobileIntroRef.current.play().catch(() => {});
+          }
+        }}
+        onTouchStart={() => {
+          if (mobileIntroRef.current && mobileIntroRef.current.paused && !mobileIntroFinished) {
+            mobileIntroRef.current.play().catch(() => {});
+          }
+        }}
+        className="relative w-full h-screen min-h-[100dvh] z-10 bg-transparent flex flex-col justify-between items-center overflow-hidden cursor-pointer"
       >
         {/* BACKGROUND VIDEOS */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
@@ -318,8 +326,10 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
           {/* MOBILE VIDEO (CELULAR): PRIMERO INTRO */}
           <video
             ref={mobileIntroRef}
+            src="/celular/intro-mobile.mp4"
             autoPlay
             muted
+            defaultMuted
             playsInline
             webkit-playsinline="true"
             preload="auto"
@@ -340,11 +350,7 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
               objectPosition: 'center center',
               zIndex: 2,
             }}
-          >
-            <source src="/celular/intro-mobile.mp4" type="video/mp4" />
-            <source src="/celular/Intro.MP4" type="video/mp4" />
-            <source src="/celular/intro.mp4" type="video/mp4" />
-          </video>
+          />
 
           {/* DESKTOP VIDEO (VERSION WEB): INTRO WEBSITE (SE DETIENE EN PÚA BRASA Y VINO) */}
           <video
