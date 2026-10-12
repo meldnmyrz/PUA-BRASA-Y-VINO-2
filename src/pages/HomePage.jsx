@@ -13,12 +13,9 @@ import Features11 from '../components/Features11';
 export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const heroRef = useRef(null);
-  const mobileIntroRef = useRef(null);
-  const mobileBgRef = useRef(null);
   const desktopIntroRef = useRef(null);
   const desktopBgRef = useRef(null);
   const introFinishedRef = useRef(false);
-  const [mobileIntroFinished, setMobileIntroFinished] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const navigate = useNavigate();
 
@@ -30,17 +27,6 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     videoEl.setAttribute('playsinline', '');
     videoEl.setAttribute('webkit-playsinline', '');
     videoEl.setAttribute('muted', '');
-  };
-
-  const handleMobileIntroEnded = () => {
-    if (mobileIntroRef.current) {
-      mobileIntroRef.current.pause();
-    }
-    setMobileIntroFinished(true);
-    if (mobileBgRef.current) {
-      setupVideoNode(mobileBgRef.current);
-      mobileBgRef.current.play().catch(() => {});
-    }
   };
 
   const handleIntroEnded = () => {
@@ -65,11 +51,9 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   useEffect(() => {
     document.title = "PÚA Brasa y Vino | Inicio — Sabores de Brasa & Cava VIP";
 
-    // Inicializar propiedades muted/playsinline para compatibilidad estricta con iOS Safari
-    setupVideoNode(mobileIntroRef.current);
+    // Inicializar propiedades de video para la versión web
     setupVideoNode(desktopIntroRef.current);
     setupVideoNode(desktopBgRef.current);
-    setupVideoNode(mobileBgRef.current);
 
     const handleScroll = () => {
       const scrollY = window.scrollY;
@@ -79,25 +63,14 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       setIsScrolledDown(hasScrolled);
 
       if (hasScrolled) {
-        if (mobileIntroRef.current && !mobileIntroRef.current.paused) {
-          mobileIntroRef.current.pause();
-        }
         if (desktopIntroRef.current && !desktopIntroRef.current.paused) {
           desktopIntroRef.current.pause();
-        }
-        if (mobileBgRef.current && mobileBgRef.current.paused) {
-          setupVideoNode(mobileBgRef.current);
-          mobileBgRef.current.play().catch(() => {});
         }
         if (desktopBgRef.current && desktopBgRef.current.paused) {
           setupVideoNode(desktopBgRef.current);
           desktopBgRef.current.play().catch(() => {});
         }
       } else {
-        if (mobileIntroRef.current && mobileIntroRef.current.paused && !mobileIntroFinished) {
-          setupVideoNode(mobileIntroRef.current);
-          mobileIntroRef.current.play().catch(() => {});
-        }
         if (desktopIntroRef.current && desktopIntroRef.current.paused && !introFinishedRef.current) {
           setupVideoNode(desktopIntroRef.current);
           desktopIntroRef.current.play().catch(() => {});
@@ -106,17 +79,9 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Auto-play seguro: En móvil arranca SOLO el intro para evitar el botón nativo de play de iOS Safari
+    // Auto-play para desktop
     const attemptPlay = () => {
-      if (window.innerWidth < 768) {
-        if (mobileIntroRef.current && !mobileIntroFinished) {
-          setupVideoNode(mobileIntroRef.current);
-          mobileIntroRef.current.play().catch(() => {});
-        } else if (mobileBgRef.current) {
-          setupVideoNode(mobileBgRef.current);
-          mobileBgRef.current.play().catch(() => {});
-        }
-      } else {
+      if (window.innerWidth >= 768) {
         if (desktopIntroRef.current && !introFinishedRef.current) {
           setupVideoNode(desktopIntroRef.current);
           desktopIntroRef.current.play().catch(() => {});
@@ -142,7 +107,7 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       window.removeEventListener('touchstart', handleUserInteraction);
       window.removeEventListener('click', handleUserInteraction);
     };
-  }, [mobileIntroFinished]);
+  }, []);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -266,18 +231,14 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       </div>
 
       {/* ============================================================
-          FONDO DE PÁGINA (SOLO VERSION CELULAR): VIDEO PARTE 2 EN LOOP CONTINUO
+          FONDO DE PÁGINA (SOLO VERSION CELULAR): PARTE 2 EN LOOP CONTINUO
+          Utiliza animación directa para evitar completamente el botón de play
+          nativo de iOS Safari y garantizar reproducción instantánea sin taps.
          ============================================================ */}
       <div className="md:hidden fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
-        <video
-          ref={mobileBgRef}
-          src="/celular/parte-2-mobile.mp4"
-          loop
-          muted
-          defaultMuted
-          playsInline
-          webkit-playsinline="true"
-          preload="auto"
+        <img
+          src="/celular/parte-2-mobile.webp"
+          alt="PÚA Brasa y Vino Fondo"
           className="w-full h-full object-cover"
           style={{
             position: 'absolute',
@@ -304,53 +265,41 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       {/* ============================================================
           01 HERO STAGE: INTRO LIMPIO SIN TEXTO
           DESKTOP: INTRO WEBSITE -> SE DETIENE EN PÚA
-          MOBILE: INTRO -> AUTOPLAY LIMPIO
+          MOBILE: INTRO -> AUTOPLAY INMEDIATO LIMPIO SIN BOTÓN DE PLAY
          ============================================================ */}
       <section 
         ref={heroRef} 
-        onClick={() => {
-          if (mobileIntroRef.current && mobileIntroRef.current.paused && !mobileIntroFinished) {
-            mobileIntroRef.current.play().catch(() => {});
-          }
-        }}
-        onTouchStart={() => {
-          if (mobileIntroRef.current && mobileIntroRef.current.paused && !mobileIntroFinished) {
-            mobileIntroRef.current.play().catch(() => {});
-          }
-        }}
+        onClick={handleScrollDown}
         className="relative w-full h-screen min-h-[100dvh] z-10 bg-transparent flex flex-col justify-between items-center overflow-hidden cursor-pointer"
       >
         {/* BACKGROUND VIDEOS */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
           
-          {/* MOBILE VIDEO (CELULAR): PRIMERO INTRO */}
-          <video
-            ref={mobileIntroRef}
-            src="/celular/intro-mobile.mp4"
-            autoPlay
-            muted
-            defaultMuted
-            playsInline
-            webkit-playsinline="true"
-            preload="auto"
-            onEnded={handleMobileIntroEnded}
-            className={`md:hidden w-full h-full object-cover transition-opacity duration-700 ${
-              mobileIntroFinished || isScrolledDown ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          {/* MOBILE HERO (CELULAR): PRIMERO INTRO ANIMADO SIN BOTÓN DE PLAY */}
+          <div
+            className={`md:hidden absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ${
+              isScrolledDown ? 'opacity-0' : 'opacity-100'
             }`}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '100%',
-              height: '100%',
-              minWidth: '100%',
-              minHeight: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center center',
-              zIndex: 2,
-            }}
-          />
+            style={{ zIndex: 2 }}
+          >
+            <img
+              src="/celular/intro-mobile.webp"
+              alt="PÚA Brasa y Vino Intro"
+              className="w-full h-full object-cover"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '100%',
+                height: '100%',
+                minWidth: '100%',
+                minHeight: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center center',
+              }}
+            />
+          </div>
 
           {/* DESKTOP VIDEO (VERSION WEB): INTRO WEBSITE (SE DETIENE EN PÚA BRASA Y VINO) */}
           <video
