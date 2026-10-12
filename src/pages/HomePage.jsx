@@ -23,8 +23,28 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const mobilePlatillosRef = useRef(null);
   const desktopIntroRef = useRef(null);
   const desktopBgRef = useRef(null);
+  const introFinishedRef = useRef(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const navigate = useNavigate();
+
+  const handleIntroEnded = () => {
+    if (desktopIntroRef.current) {
+      desktopIntroRef.current.pause();
+      introFinishedRef.current = true;
+    }
+  };
+
+  const handleIntroTimeUpdate = () => {
+    if (desktopIntroRef.current) {
+      if (
+        desktopIntroRef.current.duration &&
+        desktopIntroRef.current.currentTime >= desktopIntroRef.current.duration - 0.08
+      ) {
+        desktopIntroRef.current.pause();
+        introFinishedRef.current = true;
+      }
+    }
+  };
 
   useEffect(() => {
     document.title = "PÚA Brasa y Vino | Inicio — Sabores de Brasa & Cava VIP";
@@ -43,7 +63,8 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
             desktopIntroRef.current.pause();
           }
         } else {
-          if (desktopIntroRef.current.paused) {
+          // Solo reanudar si aún no ha finalizado en la pantalla de PUA
+          if (desktopIntroRef.current.paused && !introFinishedRef.current) {
             desktopIntroRef.current.play().catch(() => {});
           }
         }
@@ -322,15 +343,16 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
             <source src="/pua-platillos-mobile.mp4" type="video/mp4" />
           </video>
 
-          {/* DESKTOP VIDEO (VERSION WEB): INTRO WEBSITE (SE DETIENE AL BAJAR) */}
+          {/* DESKTOP VIDEO (VERSION WEB): INTRO WEBSITE (SE DETIENE EN PÚA BRASA Y VINO) */}
           <video
             ref={desktopIntroRef}
             autoPlay
-            loop
             muted
             playsInline
             webkit-playsinline="true"
             preload="auto"
+            onEnded={handleIntroEnded}
+            onTimeUpdate={handleIntroTimeUpdate}
             className={`hidden md:block w-full h-full object-cover transition-opacity duration-700 ${
               isScrolledDown ? 'opacity-0 pointer-events-none' : 'opacity-100'
             }`}
