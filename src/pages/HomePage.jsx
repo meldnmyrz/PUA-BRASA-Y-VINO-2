@@ -20,12 +20,21 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const wheelIdleTimerRef = useRef(null);
   const touchStartYRef = useRef(0);
   const heroRef = useRef(null);
-  const mobilePlatillosRef = useRef(null);
+  const mobileIntroRef = useRef(null);
+  const mobileBgRef = useRef(null);
   const desktopIntroRef = useRef(null);
   const desktopBgRef = useRef(null);
   const introFinishedRef = useRef(false);
+  const [mobileIntroFinished, setMobileIntroFinished] = useState(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
   const navigate = useNavigate();
+
+  const handleMobileIntroEnded = () => {
+    if (mobileIntroRef.current) {
+      mobileIntroRef.current.pause();
+      setMobileIntroFinished(true);
+    }
+  };
 
   const handleIntroEnded = () => {
     if (desktopIntroRef.current) {
@@ -53,24 +62,30 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       const scrollY = window.scrollY;
       setShowBackToTop(scrollY > 400);
 
-      // Al bajar (scroll > 30px) se detiene el video intro website en versión web
+      // Al bajar (scroll > 30px) se detienen los videos intro en versión web y móvil
       const hasScrolled = scrollY > 30;
       setIsScrolledDown(hasScrolled);
 
-      if (desktopIntroRef.current) {
-        if (hasScrolled) {
-          if (!desktopIntroRef.current.paused) {
-            desktopIntroRef.current.pause();
-          }
-        } else {
-          // Solo reanudar si aún no ha finalizado en la pantalla de PUA
-          if (desktopIntroRef.current.paused && !introFinishedRef.current) {
-            desktopIntroRef.current.play().catch(() => {});
-          }
+      if (hasScrolled) {
+        if (mobileIntroRef.current && !mobileIntroRef.current.paused) {
+          mobileIntroRef.current.pause();
+        }
+        if (desktopIntroRef.current && !desktopIntroRef.current.paused) {
+          desktopIntroRef.current.pause();
+        }
+      } else {
+        if (mobileIntroRef.current && mobileIntroRef.current.paused && !mobileIntroFinished) {
+          mobileIntroRef.current.play().catch(() => {});
+        }
+        if (desktopIntroRef.current && desktopIntroRef.current.paused && !introFinishedRef.current) {
+          desktopIntroRef.current.play().catch(() => {});
         }
       }
 
-      // Asegurar que el video website 2 siga en loop continuo de fondo
+      // Asegurar que los videos de fondo sigan en loop continuo
+      if (mobileBgRef.current && mobileBgRef.current.paused) {
+        mobileBgRef.current.play().catch(() => {});
+      }
       if (desktopBgRef.current && desktopBgRef.current.paused) {
         desktopBgRef.current.play().catch(() => {});
       }
@@ -149,10 +164,13 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
 
     // Auto-play de videos (mobile y desktop)
     const attemptPlay = () => {
-      if (mobilePlatillosRef.current) {
-        mobilePlatillosRef.current.play().catch(() => {});
+      if (mobileIntroRef.current && !mobileIntroFinished) {
+        mobileIntroRef.current.play().catch(() => {});
       }
-      if (desktopIntroRef.current) {
+      if (mobileBgRef.current) {
+        mobileBgRef.current.play().catch(() => {});
+      }
+      if (desktopIntroRef.current && !introFinishedRef.current) {
         desktopIntroRef.current.play().catch(() => {});
       }
       if (desktopBgRef.current) {
@@ -264,7 +282,7 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   ];
 
   return (
-    <div className="pt-0 pb-28 min-h-screen text-[#f5f7f5] bg-[#000000] md:bg-transparent relative overflow-x-clip font-sf-pro-text text-left">
+    <div className="pt-0 pb-28 min-h-screen text-[#f5f7f5] bg-transparent relative overflow-x-clip font-sf-pro-text text-left">
       
       {/* ============================================================
           FONDO DE PÁGINA (SOLO VERSION WEB): VIDEO WEBSITE 2 EN LOOP CONTINUO
@@ -305,27 +323,68 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       </div>
 
       {/* ============================================================
+          FONDO DE PÁGINA (SOLO VERSION CELULAR): VIDEO PARTE 2 EN LOOP CONTINUO
+         ============================================================ */}
+      <div className="md:hidden fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+        <video
+          ref={mobileBgRef}
+          autoPlay
+          loop
+          muted
+          playsInline
+          webkit-playsinline="true"
+          preload="auto"
+          className="w-full h-full object-cover"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '100%',
+            height: '100%',
+            minWidth: '100%',
+            minHeight: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center center',
+          }}
+        >
+          <source src="/celular/parte-2-mobile.mp4" type="video/mp4" />
+          <source src="/celular/Parte 2.MP4" type="video/mp4" />
+          <source src="/celular/parte-2.mp4" type="video/mp4" />
+        </video>
+        {/* FILTRO SUTIL DE OSCURECIMIENTO / VIGNETTE PARA CELULAR */}
+        <div 
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%)'
+          }}
+        />
+      </div>
+
+      {/* ============================================================
           01 HERO STAGE: 
-          EN EL PRIMERO SE REPRODUCE INTRO WEBSITE Y SE DETIENE AL BAJAR.
-          DE FONDO ESTÁ EL VIDEO WEBSITE 2 EN LOOP.
+          DESKTOP: INTRO WEBSITE -> WEBSITE 2 DE FONDO EN LOOP.
+          MOBILE: PRIMERO INTRO -> DESPUÉS DE FONDO PARTE 2 EN LOOP.
          ============================================================ */}
       <section 
         ref={heroRef} 
-        className="relative w-full h-screen min-h-[100dvh] z-10 bg-black md:bg-transparent flex flex-col justify-between items-center overflow-hidden"
+        className="relative w-full h-screen min-h-[100dvh] z-10 bg-transparent flex flex-col justify-between items-center overflow-hidden"
       >
         {/* BACKGROUND VIDEOS */}
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
           
-          {/* MOBILE VIDEO (SOLO PLATILLOS EN CELULAR) */}
+          {/* MOBILE VIDEO (CELULAR): PRIMERO INTRO, DESPUÉS SALE DE FONDO PARTE 2 */}
           <video
-            ref={mobilePlatillosRef}
+            ref={mobileIntroRef}
             autoPlay
-            loop
             muted
             playsInline
             webkit-playsinline="true"
             preload="auto"
-            className="md:hidden w-full h-full object-cover"
+            onEnded={handleMobileIntroEnded}
+            className={`md:hidden w-full h-full object-cover transition-opacity duration-700 ${
+              mobileIntroFinished || isScrolledDown ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}
             style={{
               position: 'absolute',
               top: '50%',
@@ -337,10 +396,12 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
               minHeight: '100%',
               objectFit: 'cover',
               objectPosition: 'center center',
+              zIndex: 2,
             }}
           >
-            <source src="/assets/pua-platillos-mobile.mp4" type="video/mp4" />
-            <source src="/pua-platillos-mobile.mp4" type="video/mp4" />
+            <source src="/celular/intro-mobile.mp4" type="video/mp4" />
+            <source src="/celular/Intro.MP4" type="video/mp4" />
+            <source src="/celular/intro.mp4" type="video/mp4" />
           </video>
 
           {/* DESKTOP VIDEO (VERSION WEB): INTRO WEBSITE (SE DETIENE EN PÚA BRASA Y VINO) */}
