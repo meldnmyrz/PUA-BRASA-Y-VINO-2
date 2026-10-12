@@ -17,7 +17,17 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
   const desktopBgRef = useRef(null);
   const introFinishedRef = useRef(false);
   const [isScrolledDown, setIsScrolledDown] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(typeof window !== 'undefined' ? window.innerWidth >= 768 : false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const setupVideoNode = (videoEl) => {
     if (!videoEl) return;
@@ -195,72 +205,76 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
       {/* ============================================================
           FONDO DE PÁGINA (SOLO VERSION WEB): VIDEO WEBSITE 2 EN LOOP CONTINUO
          ============================================================ */}
-      <div className="hidden md:block fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
-        <video
-          ref={desktopBgRef}
-          autoPlay
-          loop
-          muted
-          playsInline
-          webkit-playsinline="true"
-          preload="auto"
-          className="w-full h-full object-cover"
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '100%',
-            height: '100%',
-            minWidth: '100%',
-            minHeight: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center center',
-          }}
-        >
-          <source src="/website/website-2.mp4" type="video/mp4" />
-          <source src="/website/website 2.MP4" type="video/mp4" />
-        </video>
-        {/* FILTRO SUTIL DE OSCURECIMIENTO / VIGNETTE PARA EL FONDO DEL SITIO */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%)'
-          }}
-        />
-      </div>
+      {isDesktop && (
+        <div className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+          <video
+            ref={desktopBgRef}
+            autoPlay
+            loop
+            muted
+            playsInline
+            webkit-playsinline="true"
+            preload="auto"
+            className="w-full h-full object-cover"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '100%',
+              height: '100%',
+              minWidth: '100%',
+              minHeight: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center',
+            }}
+          >
+            <source src="/website/website-2.mp4" type="video/mp4" />
+            <source src="/website/website 2.MP4" type="video/mp4" />
+          </video>
+          {/* FILTRO SUTIL DE OSCURECIMIENTO / VIGNETTE PARA EL FONDO DEL SITIO */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%)'
+            }}
+          />
+        </div>
+      )}
 
       {/* ============================================================
           FONDO DE PÁGINA (SOLO VERSION CELULAR): PARTE 2 EN LOOP CONTINUO
           Utiliza animación directa para evitar completamente el botón de play
           nativo de iOS Safari y garantizar reproducción instantánea sin taps.
          ============================================================ */}
-      <div className="md:hidden fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
-        <img
-          src="/celular/parte-2-mobile.webp"
-          alt="PÚA Brasa y Vino Fondo"
-          className="w-full h-full object-cover"
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '100%',
-            height: '100%',
-            minWidth: '100%',
-            minHeight: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center center',
-          }}
-        />
-        {/* FILTRO SUTIL DE OSCURECIMIENTO / VIGNETTE PARA CELULAR */}
-        <div 
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%)'
-          }}
-        />
-      </div>
+      {!isDesktop && (
+        <div className="fixed inset-0 w-full h-full pointer-events-none z-0 overflow-hidden">
+          <img
+            src="/celular/parte-2-mobile.webp?v=2"
+            alt="PÚA Brasa y Vino Fondo"
+            className="w-full h-full object-cover"
+            style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '100%',
+              height: '100%',
+              minWidth: '100%',
+              minHeight: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center center',
+            }}
+          />
+          {/* FILTRO SUTIL DE OSCURECIMIENTO / VIGNETTE PARA CELULAR */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.85) 100%)'
+            }}
+          />
+        </div>
+      )}
 
       {/* ============================================================
           01 HERO STAGE: INTRO LIMPIO SIN TEXTO
@@ -276,16 +290,47 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
         <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
           
           {/* MOBILE HERO (CELULAR): PRIMERO INTRO ANIMADO SIN BOTÓN DE PLAY */}
-          <div
-            className={`md:hidden absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ${
-              isScrolledDown ? 'opacity-0' : 'opacity-100'
-            }`}
-            style={{ zIndex: 2 }}
-          >
-            <img
-              src="/celular/intro-mobile.webp"
-              alt="PÚA Brasa y Vino Intro"
-              className="w-full h-full object-cover"
+          {!isDesktop && (
+            <div
+              className={`absolute inset-0 w-full h-full pointer-events-none transition-opacity duration-700 ${
+                isScrolledDown ? 'opacity-0' : 'opacity-100'
+              }`}
+              style={{ zIndex: 2 }}
+            >
+              <img
+                src="/celular/intro-mobile.webp?v=2"
+                alt="PÚA Brasa y Vino Intro"
+                className="w-full h-full object-cover"
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '100%',
+                  height: '100%',
+                  minWidth: '100%',
+                  minHeight: '100%',
+                  objectFit: 'cover',
+                  objectPosition: 'center center',
+                }}
+              />
+            </div>
+          )}
+
+          {/* DESKTOP VIDEO (VERSION WEB): INTRO WEBSITE (SE DETIENE EN PÚA BRASA Y VINO) */}
+          {isDesktop && (
+            <video
+              ref={desktopIntroRef}
+              autoPlay
+              muted
+              playsInline
+              webkit-playsinline="true"
+              preload="auto"
+              onEnded={handleIntroEnded}
+              onTimeUpdate={handleIntroTimeUpdate}
+              className={`w-full h-full object-cover transition-opacity duration-700 ${
+                isScrolledDown ? 'opacity-0 pointer-events-none' : 'opacity-100'
+              }`}
               style={{
                 position: 'absolute',
                 top: '50%',
@@ -297,40 +342,13 @@ export default function HomePage({ onOpenItemModal, onAddToCart }) {
                 minHeight: '100%',
                 objectFit: 'cover',
                 objectPosition: 'center center',
+                zIndex: 2,
               }}
-            />
-          </div>
-
-          {/* DESKTOP VIDEO (VERSION WEB): INTRO WEBSITE (SE DETIENE EN PÚA BRASA Y VINO) */}
-          <video
-            ref={desktopIntroRef}
-            autoPlay
-            muted
-            playsInline
-            webkit-playsinline="true"
-            preload="auto"
-            onEnded={handleIntroEnded}
-            onTimeUpdate={handleIntroTimeUpdate}
-            className={`hidden md:block w-full h-full object-cover transition-opacity duration-700 ${
-              isScrolledDown ? 'opacity-0 pointer-events-none' : 'opacity-100'
-            }`}
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: '100%',
-              height: '100%',
-              minWidth: '100%',
-              minHeight: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center center',
-              zIndex: 2,
-            }}
-          >
-            <source src="/website/intro-website.mp4" type="video/mp4" />
-            <source src="/website/Intro website.MP4" type="video/mp4" />
-          </video>
+            >
+              <source src="/website/intro-website.mp4" type="video/mp4" />
+              <source src="/website/Intro website.MP4" type="video/mp4" />
+            </video>
+          )}
         </div>
 
         {/* ESPACIO SUPERIOR LIMPIO */}
